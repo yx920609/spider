@@ -1,10 +1,20 @@
 from scrapy.spiders import Spider
 from scrapy.http import Request
+from scrapy.selector import Selector
+from tutorial.items import TutorialItem
 
 import logging
 class DemoSpider(Spider):
     name = "TestSpider"
-    start_urls = ["https://www.qiushibaike.com/8hr/page/2/","https://www.qiushibaike.com/8hr/page/3/"]
+    # start_urls = ["https://www.qiushibaike.com/8hr/page/2/","https://www.qiushibaike.com/8hr/page/3/"]
+
+    url_lists = ["https://www.qiushibaike.com"]
+
+    for x in range(2,3):
+        url_lists.append("https://www.qiushibaike.com/8hr/page/%s/" % x)
+    print('urlArrays=====>%s' % url_lists)
+
+    start_urls = url_lists
     headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Encoding": "gzip, deflate, sdch",
@@ -21,9 +31,25 @@ class DemoSpider(Spider):
             yield self.make_requests_from_url(url)
 
     def make_requests_from_url(self, url):
-
         return Request(url, headers=self.headers, dont_filter=True)
+
     def parse(self,response):
-        fileName = response.url.split('/')[-2]
-        open(fileName,'wb').write(response.body)
-        logging.info('demoInf0======>%s',response.body.decode('utf-8'))
+        sel = Selector(response)
+        msgList = sel.xpath('//div[contains(@class,"article block untagged mb15")]')
+        item = TutorialItem()
+        # print('arrayLength====>%s'%len(msgList))
+        for data in msgList:
+            # title = data.xpath('div/a/h2')
+            title = data.xpath('div/a/h2/text()').extract_first()
+            content = data.xpath('a/div/span/text()').extract_first()
+            imgUrl = data.xpath('div/a/img/@src').extract_first()
+            print('title=====>%s' % title)
+            print('content=====>%s' % content)
+            print('imgUrl=====>%s' % ('https:%s'%imgUrl))
+           
+            item.name = (title if(title) else '匿名用户')
+            item.content = content
+            item.imgUrl = imgUrl
+            
+            yield item
+
